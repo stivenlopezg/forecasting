@@ -1,5 +1,5 @@
 ---
-title: "Using Tidyverts with the Australian retail data: introduction"
+title: "Using Tidyverts with the Australian retail data: introduction and exploration"
 output: html_notebook
 ---
 
@@ -71,7 +71,7 @@ aus_retail %>%
 
 Observations about this plot:
 
-- There is a very obvious increasing trend over time. The trend is also mostly monotonic, which reflects Australian economic conditions over this period (it was not as severely affected by the recession of 2001, and the global economic crisis of 2008, as many other developed nations).
+- There is a very obvious increasing trend over time, which is to be expected given general economic growth.
 - There is also very strong seasonality, with a spike in December reflecting Christmas spending.
 - Both trend and seasonality appear to be multiplicative.
 

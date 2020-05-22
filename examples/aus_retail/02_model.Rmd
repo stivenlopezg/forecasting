@@ -1,0 +1,151 @@
+---
+title: "Using Tidyverts with the Australian retail data: modelling"
+output: html_notebook
+---
+
+Having explored the retail data, let's fit some models to it. We'll use the first 25.5 years of data for model training, and the remaining 10 years for training.
+
+- `drift` is a simple random walk model incorporating a drift term.
+- `sdrift` is the seasonal counterpart to `drift`, ie the random walk is by season.
+- `ar` is an ARIMA model with all seasonal and nonseasonal terms chosen from the data.
+- `ets_auto` is an ETS model with the form of the components chosen from the data (either additive or multiplicative).
+- `ets_fixed` is an ETS model where the components are all additive, based on examining the plots in the previous notebook.
+
+In addition, a nice feature of the `model` function is that it can fit models in parallel by leveraging the future and future.apply packages. Here, we use the `multisession` plan to create a background cluster of R processes for this purpose.
+
+```{r}
+library(dplyr)
+library(tsibbledata)
+library(tsibble)
+library(feasts)
+library(fable)
+library(future)
+
+plan(multisession)
+
+aus_retail_tr <- aus_retail %>%
+    filter(Month <= yearmonth("2008 Dec"))
+aus_retail_vl <- aus_retail %>%
+    filter(Month > yearmonth("2008 Dec"))
+
+mods <- model(aus_retail_tr,
+    drift=NAIVE(log(Turnover) ~ drift()),
+    sdrift=SNAIVE(log(Turnover) ~ drift()),
+    ar=ARIMA(log(Turnover)),
+    ets_auto=ETS(log(Turnover)),
+    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A")),
+    .safely=FALSE
+)
+
+nrow(mods)
+```
+
+Note that there are 150 separate models for each of the above, corresponding to all observed combinations of state/territory and industry (not every industry is represented in each state). The ability to parallelise model training is thus very useful.
+
+Let's examine the resulting output, for one time series. The plotted output from `autoplot` includes the point forecasts along with the 80% and 95% prediction intervals, for each model.
+
+```{r}
+library(ggplot2)
+
+fcasts <- forecast(mods, new_data=aus_retail_vl)
+
+fcasts %>%
+    filter(Industry == "Food retailing", State == "New South Wales") %>%
+    autoplot(data=aus_retail_vl) +
+        theme(legend.position="bottom")
+```
+
+The main feature of this plot is that the `drift` model is almost comically bad. Not only does it fails to capture the seasonal pattern in the data, but it also severely overestimates the growth in turnover in the validation period.
+
+We can redo the plot, but omitting this one model and using only the 80% prediction intervals:
+
+```{r}
+fcasts %>%
+    filter(Industry == "Food retailing", State == "New South Wales", .model != "drift") %>%
+    autoplot(data=aus_retail_vl, level=80) +
+        theme(legend.position="bottom")
+```
+
+This plot shows that, in fact, _all_ of the models are systematically overestimating the growth in turnover (although the actual growth is still mostly within the prediction intervals). What's causing this? The reason is probably because of how we split the data into training and validation periods. The training data terminates at the end of 2008, which corresponds to the global financial crisis; conversely, the validation data starts at a point in which the economy is low and beginning to recover from the crisis.
+
+To test this hypothesis, let's refit the models, but this time with the training period extended to the end of 2013:
+
+```{r}
+aus_retail_2013_tr <- aus_retail %>%
+    filter(Month <= yearmonth("2013 Dec"))
+aus_retail_2013_vl <- aus_retail %>%
+    filter(Month > yearmonth("2013 Dec"))
+
+mods_2013 <- model(aus_retail_2013_tr,
+    sdrift=SNAIVE(log(Turnover) ~ drift()),
+    ar=ARIMA(log(Turnover)),
+    ets_auto=ETS(log(Turnover)),
+    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A")),
+    .safely=FALSE
+)
+```
+
+The corresponding plot of forecast turnover shows much closer agreement to the actual values. The `sdrift` model is the only outlier.
+
+```{r}
+fcasts_2013 <- forecast(mods_2013, new_data=aus_retail_2013_vl)
+
+fcasts_2013 %>%
+    filter(Industry == "Food retailing", State == "New South Wales") %>%
+    autoplot(data=aus_retail_vl, level=80) +
+        theme(legend.position="bottom") +
+        scale_y_log10() +
+        annotation_logticks()
+```
+
+We can also aggregate up the forecasts to the state level and plot them. There are a couple of warts to be aware of:
+
+- Some time series actually end before the validation period, so we need to exclude them from the aggregation to avoid distorting the results.
+- Currently (as of May 2020) there are still some glitches when row-binding tsibbles, so we explicitly coerce the result of `bind_rows()` to a tsibble.
+
+```{r}
+state_vl <- aus_retail_vl %>%
+    group_by(State) %>%
+    summarise(Turnover=sum(Turnover))
+
+fcasts_state_2013 <- fcasts_2013 %>%
+    filter(Month > yearmonth("2013 Dec")) %>%
+    group_by(State, .model) %>%
+    summarise(Turnover=sum(Turnover)) %>%
+    bind_rows(state_vl) %>%
+    tsibble(key=c(State, .model), index=Month) %>%
+    mutate(.model=ifelse(is.na(.model), ".response", .model))
+
+state_fcast_plot <- function(state)
+{
+    fcasts_state_2013 %>%
+        filter(State == state) %>%
+        select(-State) %>%
+        autoplot(Turnover) +
+            theme(legend.position="bottom") +
+            scale_y_log10() +
+            annotation_logticks() +
+            ggtitle(state)
+}
+
+state_fcast_plot("New South Wales")
+state_fcast_plot("Victoria")
+state_fcast_plot("Queensland")
+```
+
+A variety of point estimate accuracy measures are provided in the fabletools package. For this dataset, the MAPE (mean absolute percentage error) is appropriate. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Nevertheless, let's examine the MAPE scores of the different model types.
+
+```{r}
+library(tidyr)
+
+fcasts_2013_wide <- fcasts_2013 %>%
+    filter(Month > yearmonth("2013 Dec")) %>%
+    as_tibble() %>%
+    pivot_wider(id_cols=c(State, Industry, .model, Month), names_from=.model, values_from=Turnover) %>%
+    inner_join(aus_retail_2013_vl, by=c("State", "Industry", "Month"))
+
+fcasts_2013_wide %>%
+    summarise_at(vars(sdrift:ets_fixed), function(x) MAPE(x - .$Turnover, .$Turnover))
+```
+
+This shows that the `sdrift` model performs worst, which is expected given how simplistic it is. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns.
