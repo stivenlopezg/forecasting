@@ -42,7 +42,7 @@ nrow(mods)
 
 Note that there are 150 separate models for each of the above, corresponding to all observed combinations of state/territory and industry (not every industry is represented in each state). The ability to parallelise model training is thus very useful.
 
-Let's examine the resulting output, for one time series. The plotted output from `autoplot` includes the point forecasts along with the 80% and 95% prediction intervals, for each model.
+Let's examine the resulting output, for one time series. The plotted output from `autoplot` includes the point forecasts along with the 80% and 95% prediction intervals, for each model. The actual turnover in this period is given by the black line.
 
 ```{r}
 library(ggplot2)
@@ -131,9 +131,14 @@ state_fcast_plot <- function(state)
 state_fcast_plot("New South Wales")
 state_fcast_plot("Victoria")
 state_fcast_plot("Queensland")
+state_fcast_plot("South Australia")
+state_fcast_plot("Western Australia")
+state_fcast_plot("Tasmania")
+state_fcast_plot("Northern Territory")
+state_fcast_plot("Australian Capital Territory")
 ```
 
-A variety of point estimate accuracy measures are provided in the fabletools package. For this dataset, the MAPE (mean absolute percentage error) is appropriate. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Nevertheless, let's examine the MAPE scores of the different model types.
+A variety of point estimate accuracy measures are provided in the fabletools package. For this dataset, the MAPE (mean absolute percentage error) is appropriate. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Nevertheless, let's examine the MAPE scores of the different model types, both by state, and overall.
 
 ```{r}
 library(tidyr)
@@ -145,7 +150,13 @@ fcasts_2013_wide <- fcasts_2013 %>%
     inner_join(aus_retail_2013_vl, by=c("State", "Industry", "Month"))
 
 fcasts_2013_wide %>%
+    group_by(State) %>%
+    group_modify(function(.x, .y)
+        summarise_at(.x, vars(sdrift:ets_fixed), function(x) MAPE(x - .x$Turnover, .x$Turnover))
+    )
+
+fcasts_2013_wide %>%
     summarise_at(vars(sdrift:ets_fixed), function(x) MAPE(x - .$Turnover, .$Turnover))
 ```
 
-This shows that the `sdrift` model performs worst, which is expected given how simplistic it is. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns.
+This shows that the `sdrift` model performs worst, which is unsurprising given that it is simplistic by design. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns. The forecast accuracy is best for the bigger states (NSW and Victoria) and worst for the Northern Territory and Western Australia. This is mostly because of difficulties in predicting the trend for the smaller states and territories.
