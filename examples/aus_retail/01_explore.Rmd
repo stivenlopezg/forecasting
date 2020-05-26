@@ -9,7 +9,7 @@ output: html_notebook
 
 ## Data manipulation and summaries
 
-Tidyverts is designed to integrate with the [Tidyverse](https://tidyverse.org), the de facto standard for data analytics workflows in R (the similarity in names is intentional). In particular, it defines a new data structure called a _tsibble_, which is an extended version of a tibble for working with time series. You can use all the standard dplyr/purrr verbs with tsibbles.
+Tidyverts is designed to integrate with the [Tidyverse](https://tidyverse.org), the de facto standard for data analytics workflows in R (the similarity in names is something of an in-joke). In particular, it defines a new data structure called a _tsibble_, which is an extended version of a tibble for working with time series. You can use all the standard dplyr/purrr verbs with tsibbles.
 
 Let's look at how to do some simple summaries. We'll use the `aus_retail` dataset, which contains retail turnover statistics by (Australian) state and industry, going back to 1982. This is part of the tsibbledata package, which contains several example time series datasets.
 
@@ -20,7 +20,7 @@ library(tsibble)
 library(feasts)
 library(fable)
 
-head(aus_retail)
+slice(aus_retail, 1:6)
 ```
 
 A tsibble includes two attributes to hold the time series information in the data:
@@ -50,13 +50,20 @@ aus_retail %>%
     as_tibble() %>%
     group_by(State) %>%
     summarise(Turnover=sum(Turnover))
+
+aus_retail %>%
+    index_by() %>%
+    summarise(Turnover=sum(Turnover))
+
 ```
 
 There aren't any surprises here, if you're familiar with Australian geography. NSW and Victoria are the largest states for retail turnover, closely followed by Queensland. The Northern Territory has the lowest turnover, with Tasmania second-lowest. Canberra (Australian Capital Territory) has higher turnover than Tasmania despite having a slightly smaller population; this is probably because it has higher average income, being the national capital.
 
+Other methods provided for grouping and summarising tsibbles include `index_by`, which lets you manipulate how the index variable is treated as a grouping variable; and `group_by_key`, which automatically groups by the key variables.
+
 ## Plotting the data
 
-Let's have a look at the trends in the data over time. Tidyverts defines a `ggplot::autoplot` method for tsibbles, which is intended to give you a reasonable plot for a time series. When given a dataset with keys, it will plot a separate line for each key combination. For this dataset, there are about $8 \times 20 = 160$ combinations, which is too many to show on a single plot; instead, let's look at the state-level aggregation.
+Let's have a look at the trends in the data over time. Tidyverts defines a `ggplot::autoplot` method for tsibbles, which is intended to give you a reasonable plot for a time series. When given a dataset with keys, it will produce a separate time plot for each key combination. For this dataset, there are about $8 \times 20 = 160$ combinations, which is too many to show on a single plot; instead, let's look at the state-level aggregation.
 
 ```{r}
 library(ggplot2)
@@ -110,7 +117,7 @@ industry_autologplot("Clothing, footwear and personal accessory retailing")
 industry_autologplot("Electrical and electronic goods retailing")
 ```
 
-The Tidyverts framework defines a number of other functions to help in exploratory analysis, in the fabletools package. For plotting, the `gg_subseries` function produces a seasonal subseries plot, which facets the time series by each season in the seasonal period:
+The Tidyverts framework defines a number of other functions to help in exploratory analysis, in the feasts package. For plotting, the `gg_subseries` function produces a seasonal subseries plot, which facets the time series by each season in the seasonal period:
 
 ```{r}
 aus_retail %>%
@@ -121,7 +128,7 @@ aus_retail %>%
         ggtitle("Food retailing/New South Wales")
 ```
 
-The `gg_season` function produces a plot where the x-axis shows data from within each season. This plot type allows the underlying seasonal pattern to be seen more clearly, and can be useful in identifying years in which the pattern changes:
+The `gg_season` function produces a plot where the x-axis shows data from within each season. This plot type allows the underlying seasonal pattern to be seen more clearly, and can be useful in identifying years in which the pattern changes. Here, the blue and black lines are the average turnover and trend over time, within each month.
 
 ```{r}
 aus_retail %>%

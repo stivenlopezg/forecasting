@@ -35,8 +35,7 @@ mods <- model(aus_retail_tr,
     sdrift=SNAIVE(log(Turnover) ~ drift()),
     ar=ARIMA(log(Turnover)),
     ets_auto=ETS(log(Turnover)),
-    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A")),
-    .safely=FALSE
+    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A"))
 )
 
 nrow(mods)
@@ -44,7 +43,7 @@ nrow(mods)
 
 Note that there are 150 separate models for each of the above, corresponding to all observed combinations of state/territory and industry (not every industry is represented in each state). The ability to parallelise model training is thus very useful.
 
-Let's examine the resulting output, for one time series. The plotted output from `autoplot` includes the point forecasts along with the 80% and 95% prediction intervals, for each model. The actual turnover in this period is given by the black line.
+Let's examine the resulting output, for one time series. The plotted output from `autoplot` includes the point forecasts along with the 80% and 95% prediction intervals, for each model. To compare these results to the actual turnover in the period, we pass the validation dataset to `autoplot` in the `data` argument. The actual turnover is given by the black line.
 
 ```{r}
 library(ggplot2)
@@ -68,10 +67,7 @@ fcasts %>%
         theme(legend.position="bottom")
 ```
 
-This plot shows that, in fact, _all_ of the models are systematically overestimating the growth in turnover (although the actual growth is still mostly within the prediction intervals). To see whether this is limited to this particular time series, we can also aggregate up the forecasts to the state level and plot them. There are a couple of warts to be aware of:
-
-- Some time series actually end before the validation period, so we need to exclude them from the aggregation to avoid distorting the results.
-- Currently (as of May 2020) there are still some glitches when row-binding tsibbles, so we explicitly coerce the result of `bind_rows()` to a tsibble.
+This plot shows that, in fact, _all_ of the models are systematically overestimating the growth in turnover (although the actual growth is still mostly within the prediction intervals). To see whether this is limited to this particular time series, we can also aggregate up the forecasts to the state level and plot them. There is a wart to be aware of: some time series actually end before the validation period, so we need to exclude them from the aggregation to avoid distorting the results.
 
 ```{r}
 state_vl <- aus_retail_vl %>%
@@ -81,16 +77,16 @@ state_vl <- aus_retail_vl %>%
 fcasts_state <- fcasts %>%
     filter(Month > yearmonth("2008 Dec"), .model != "drift") %>%
     group_by(State, .model) %>%
-    summarise(Turnover=sum(Turnover)) %>%
+    summarise(Turnover=sum(.mean)) %>%
     bind_rows(state_vl) %>%
-    tsibble(key=c(State, .model), index=Month) %>%
     mutate(.model=ifelse(is.na(.model), ".response", .model))
 
 fcasts_state_plot <- function(state)
 {
     fcasts_state %>%
         filter(State == state) %>%
-        select(-State) %>%
+        ungroup() %>%
+        update_tsibble(key=.model) %>%
         autoplot(Turnover) +
             theme(legend.position="bottom") +
             scale_y_log10() +
@@ -124,8 +120,7 @@ mods_2013 <- model(aus_retail_2013_tr,
     sdrift=SNAIVE(log(Turnover) ~ drift()),
     ar=ARIMA(log(Turnover)),
     ets_auto=ETS(log(Turnover)),
-    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A")),
-    .safely=FALSE
+    ets_fixed=ETS(log(Turnover) ~ error("A") + trend("A") + season("A"))
 )
 
 fcasts_2013 <- forecast(mods_2013, new_data=aus_retail_2013_vl)
@@ -133,16 +128,16 @@ fcasts_2013 <- forecast(mods_2013, new_data=aus_retail_2013_vl)
 fcasts_state_2013 <- fcasts_2013 %>%
     filter(Month > yearmonth("2013 Dec")) %>%
     group_by(State, .model) %>%
-    summarise(Turnover=sum(Turnover)) %>%
+    summarise(Turnover=sum(.mean)) %>%
     bind_rows(state_vl) %>%
-    tsibble(key=c(State, .model), index=Month) %>%
     mutate(.model=ifelse(is.na(.model), ".response", .model))
 
 fcasts_state_2013_plot <- function(state)
 {
     fcasts_state_2013 %>%
         filter(State == state) %>%
-        select(-State) %>%
+        ungroup() %>%
+        update_tsibble(key=.model) %>%
         autoplot(Turnover) +
             theme(legend.position="bottom") +
             scale_y_log10() +
@@ -194,5 +189,5 @@ This broadly confirms the patterns seen in the plots above. The `sdrift` model p
 
 There is a particularly timely and important observation to make regarding this dataset. From above, we saw that updating the models to use the data up to 2013 gave better forecast accuracy, especially for NSW and Victoria. Assuming that we were only interested in these two states, what would happen if we were to use the models to obtain forecasts for 2020 and beyond? Despite the good results on past data, they would almost certainly be very wide of the mark. This is because even the best model could not possibly anticipate the massive global recession caused by the COVID-19 pandemic. (Of course, the same would apply for any subjective forecast based on expert knowledge, so this is not an endorsement of judgemental forecasting.)
 
-These results demonstrate the risks inherent in forecasting, especially when there is a strong trend. Even a trend that appears to be stable over time can diverge for reasons not captured in the data, resulting in systematic forecast errors. Any assessment of model performance should be interpreted in context, with the possibility of external shifts taken into account.
+These results demonstrate the risks inherent in forecasting, especially when there is a strong trend. Even a trend that appears to be stable over time can diverge for reasons not captured in the data, resulting in systematic forecast errors. Any assessment of model performance should be interpreted in context, with the possibility of external shifts taken into account. Prediction standard intervals are better than relying on point forecasts, but be aware that these still assume that the training data contain shocks that are similar to those that will occur in the future.
 
