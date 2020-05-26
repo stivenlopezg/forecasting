@@ -162,7 +162,7 @@ The plots show much better agreement between forecasts and actuals, especially f
 
 A variety of point estimate accuracy measures are provided in the fabletools package. For this dataset, the MAPE (mean absolute percentage error) is appropriate. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Also, it's better to treat these as _relative_ measures, to help us decide which of a number of competing models to use, rather than looking at the absolute accuracy.
 
- Nevertheless, let's examine the MAPE scores of the different model types, both by state, and overall.
+Nevertheless, let's examine the MAPE scores of the different model types, both by state, and overall.
 
 ```{r}
 library(tidyr)
@@ -185,9 +185,28 @@ fcasts_2013_wide %>%
 
 This broadly confirms the patterns seen in the plots above. The `sdrift` model performs worst, which is unsurprising given that it is simplistic by design. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns. The forecast accuracy is best for the bigger states (NSW and Victoria) and worst for the Northern Territory and Western Australia.
 
-### Comment
+## Comments
+
+### Risks of forecasting
 
 There is a particularly timely and important observation to make regarding this dataset. From above, we saw that updating the models to use the data up to 2013 gave better forecast accuracy, especially for NSW and Victoria. Assuming that we were only interested in these two states, what would happen if we were to use the models to obtain forecasts for 2020 and beyond? Despite the good results on past data, they would almost certainly be very wide of the mark. This is because even the best model could not possibly anticipate the massive global recession caused by the COVID-19 pandemic. (Of course, the same would apply for any subjective forecast based on expert knowledge, so this is not an endorsement of judgemental forecasting.)
 
 These results demonstrate the risks inherent in forecasting, especially when there is a strong trend. Even a trend that appears to be stable over time can change for reasons not captured in the data, resulting in systematic forecast errors. Any assessment of model performance should be interpreted in context, with the possibility of external shifts taken into account. Prediction standard intervals are better than relying on point forecasts, but be aware that these still assume that the training data contain shocks that are similar to those that will occur in the future.
+
+### Many models vs one model
+
+In this case study, the `aus_retail` dataset contained 150 separate time series, one for every combination of state and industry. Each of our models, like `ar` and `ets`, is actually a _family_ of models, one per time series. This so-called _many-models_ approach to forecasting can be contrasted to the _one model_ approach, where we fit a single model to the entire dataset, and use variables like state and industry as predictor variables.
+
+In general, the many-models approach often produces better results than using one model. The reason for this can be seen in the time plots of the individual states and industries: the trends, and seasonal patterns, vary considerably from one time series to the next. It is often difficult to capture this systematic variation in a single model.
+
+The tidyverts framework currently only supports the many-models approach, but work is in progress to support one-model as well.
+
+### Regression-based modelling
+
+Something that has not been attempted here is a regression-based approach. In the discussion of the forecast performance by state, it was mentioned that some states had been harder hit than others by the global financial crisis which affected the accuracy of the forecasts. It could be imagined that if we had suitable data on economic indicators---household income, unemployment, inflation, etc---we could use these as predictor variables in a regression model for retail turnover. This would allow us to capture the different trends by state, and thus generate more accurate forecasts.
+
+The main drawback of regression-based forecasting is that values for the predictor variables themselves must be available in the periods for which a forecast is required. Obtaining these values is often a difficult forecasting problem in its own right, and forecasting economic indicators in particular is notoriously hard. Hence we will not have gained anything.
+
+Nevertheless, in some circumstances a regression-based approach can be competitive with univariate forecasting. An example is retail demand at the individual-product level, where we have a large set of product features with which to model demand, and these features can reasonably be assumed to be known (or controllable) in the future. With enough data, machine learning algorithms such as gradient boosting or deep learning networks can be used to fit one large model to the entire dataset, and the predictions used for forecasting. Such models are beyond the scope of this case study.
+
 
