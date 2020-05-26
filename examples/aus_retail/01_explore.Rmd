@@ -50,11 +50,6 @@ aus_retail %>%
     as_tibble() %>%
     group_by(State) %>%
     summarise(Turnover=sum(Turnover))
-
-aus_retail %>%
-    index_by() %>%
-    summarise(Turnover=sum(Turnover))
-
 ```
 
 There aren't any surprises here, if you're familiar with Australian geography. NSW and Victoria are the largest states for retail turnover, closely followed by Queensland. The Northern Territory has the lowest turnover, with Tasmania second-lowest. Canberra (Australian Capital Territory) has higher turnover than Tasmania despite having a slightly smaller population; this is probably because it has higher average income, being the national capital.
