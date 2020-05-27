@@ -6,7 +6,7 @@ The main reference for Tidyverts is the textbook [_Forecasting: Principles and P
 
 ## Summary
 
-The Rmarkdown notebooks in this directory are as follows. Each notebook also has a corresponding HTML file, which is the rendered output from running the code. This is best viewed on our [https://microsoft.github.io/forecasting/](https://microsoft.github.io/forecasting/) GitHub Page.
+The R Notebooks in this directory are as follows. Each notebook also has a corresponding HTML file, which is the rendered output from running the code. This is best viewed on our [https://microsoft.github.io/forecasting/](https://microsoft.github.io/forecasting/) GitHub Page.
 
 - [`01_explore.Rmd`](01_explore.Rmd) [`(.html)`](01_explore.nb.html) introduces the `aus_retail` dataset and performs some exploratory analysis, generating graphs and tables.
 - [`02_model.Rmd`](02_model.Rmd) [`(.html)`](02_model.nb.html) fits a range of simple time series models to the data and discusses the results.
@@ -27,7 +27,7 @@ The following packages are needed to run the notebooks in this directory:
 - future
 - future.apply
 
-It's likely that you will already have many of these (particularly the [Tidyverse](https://tidyverse.org) packages) installed, if you use R for data science tasks. The main exceptions are the packages in the [Tidyverts](https://tidyverts.org) family, which is a modern framework for time series analysis building on the Tidyverse.
+It's likely that you will already have many of these (particularly the [Tidyverse](https://tidyverse.org) packages) installed, if you use R for data science tasks.
 
 ```r
 install.packages("tidyverse") # installs all tidyverse packages

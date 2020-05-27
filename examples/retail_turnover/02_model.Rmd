@@ -176,11 +176,27 @@ fcasts_2013_wide <- fcasts_2013 %>%
 fcasts_2013_wide %>%
     group_by(State) %>%
     group_modify(function(.x, .y)
-        summarise_at(.x, vars(sdrift:ets_fixed), function(x) MAPE(x - .x$Turnover, .x$Turnover))
-    )
+    {
+        traindata <- filter(aus_retail_2013_tr, State == .y$State)
+        summarise_at(.x, vars(sdrift:ets_fixed), list(
+            MAPE=function(x) MAPE(x - .x$Turnover, .x$Turnover),
+            MASE=function(x) MASE(x - .x$Turnover, traindata$Turnover, .period=12, d=TRUE))
+        )
+    })
 
 fcasts_2013_wide %>%
-    summarise_at(vars(sdrift:ets_fixed), function(x) MAPE(x - .$Turnover, .$Turnover))
+    group_modify(function(.x, .y)
+    {
+        traindata <- filter(aus_retail_2013_tr, Industry == .x$Industry[1])
+        summarise_at(.x, vars(sdrift:ets_fixed), list(
+            MAPE=function(x) MAPE(x - .x$Turnover, .x$Turnover),
+            MASE=function(x) MASE(x - .x$Turnover, traindata$Turnover, .period=12, d=TRUE))
+        )
+    }) %>%
+    as.data.frame
+
+# fcasts_2013_wide %>%
+#     summarise_at(vars(sdrift:ets_fixed), function(x) MAPE(x - .$Turnover, .$Turnover))
 ```
 
 This broadly confirms the patterns seen in the plots above. The `sdrift` model performs worst, which is unsurprising given that it is simplistic by design. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns. The forecast accuracy is best for the bigger states (NSW and Victoria) and worst for the Northern Territory and Western Australia.

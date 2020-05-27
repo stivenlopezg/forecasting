@@ -112,12 +112,12 @@ industry_autologplot("Clothing, footwear and personal accessory retailing")
 industry_autologplot("Electrical and electronic goods retailing")
 ```
 
-The Tidyverts framework defines a number of other functions to help in exploratory analysis, in the feasts package. For plotting, the `gg_subseries` function produces a seasonal subseries plot, which facets the time series by each season in the seasonal period:
+The Tidyverts framework defines a number of other functions to help with exploratory analysis, in the feasts package. For plotting, the `gg_subseries` function produces a seasonal subseries plot, which facets the time series by each season in the seasonal period:
 
 ```{r}
 aus_retail %>%
     filter(Industry == "Food retailing", State == "New South Wales") %>%
-    gg_season(Turnover) +
+    gg_season(Turnover, facet_period="10 years") + theme(axis.text.x=element_blank()) +
         scale_y_log10() +
         annotation_logticks() +
         ggtitle("Food retailing/New South Wales")
