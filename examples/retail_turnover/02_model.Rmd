@@ -160,15 +160,14 @@ The plots show much better agreement between forecasts and actuals, especially f
 
 ## Measuring accuracy
 
-A variety of point estimate accuracy measures are provided in the fabletools package. For this dataset, the MAPE (mean absolute percentage error) is appropriate. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Also, it's better to treat these as _relative_ measures, to help us decide which of a number of competing models to use, rather than looking at the absolute accuracy.
+A variety of point estimate accuracy measures are provided in the fabletools package. In general, you should not put too much emphasis on such measures as they play down the uncertainty inherent in any statistical inference task, let alone forecasting; remember to look at the prediction intervals as well to guide you on whether a model is adequate. Also, it's better to treat these as _relative_ measures, to help us decide which of a number of competing models to use, rather than looking at the absolute accuracy.
 
-Nevertheless, let's examine the MAPE scores of the different model types, both by state, and overall.
+Nevertheless, let's examine some accuracy scores for the different model types, both by state, and overall. For this dataset, the MASE (mean absolute scaled error) and MAPE (mean absolute percentage error) measures are appropriate. MAPE is simple and easy to explain to a nontechnical audience, while MASE has better statistical properties.
 
 ```{r}
 library(tidyr)
 
 fcasts_2013_wide <- fcasts_2013 %>%
-    filter(Month > yearmonth("2013 Dec")) %>%
     as_tibble() %>%
     pivot_wider(id_cols=c(State, Industry, .model, Month), names_from=.model, values_from=.mean) %>%
     inner_join(aus_retail_2013_vl, by=c("State", "Industry", "Month"))
@@ -176,14 +175,28 @@ fcasts_2013_wide <- fcasts_2013 %>%
 fcasts_2013_wide %>%
     group_by(State) %>%
     group_modify(function(.x, .y)
-        summarise_at(.x, vars(sdrift:ets_fixed), function(x) MAPE(x - .x$Turnover, .x$Turnover))
-    )
+    {
+        traindata <- aus_retail_2013_tr %>%
+            filter(State == .y$State) %>%
+            summarise(Turnover=sum(Turnover))
+        summarise_at(.x, vars(sdrift:ets_fixed), list(
+            MASE=function(x) MASE(x - .x$Turnover, traindata$Turnover, .period=12, d=FALSE, D=TRUE),
+            MAPE=function(x) MAPE(x - .x$Turnover, .x$Turnover)
+        ))
+    })
 
 fcasts_2013_wide %>%
-    summarise_at(vars(sdrift:ets_fixed), function(x) MAPE(x - .$Turnover, .$Turnover))
+    group_modify(function(.x, .y)
+    {
+        traindata <- summarise(aus_retail_2013_tr, Turnover=sum(Turnover))
+        summarise_at(.x, vars(sdrift:ets_fixed), list(
+            MASE=function(x) MASE(x - .x$Turnover, traindata$Turnover, .period=12, d=FALSE, D=TRUE),
+            MAPE=function(x) MAPE(x - .x$Turnover, .x$Turnover)
+        ))
+    })
 ```
 
-This broadly confirms the patterns seen in the plots above. The `sdrift` model performs worst, which is unsurprising given that it is simplistic by design. The `ets_auto` model performs best, probably because this particular dataset exhibits very clear trends and seasonal patterns. The forecast accuracy is best for the bigger states (NSW and Victoria) and worst for the Northern Territory and Western Australia.
+This broadly confirms the patterns seen in the plots above. The `sdrift` model performs worst, which is unsurprising given that it is simplistic by design. The ETS models perform best, probably because this particular dataset exhibits very clear trends and seasonal patterns. The forecast accuracy is best for the bigger states (NSW and Victoria) and worst for the Northern Territory and Western Australia.
 
 ## Comments
 

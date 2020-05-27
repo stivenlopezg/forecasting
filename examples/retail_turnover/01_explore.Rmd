@@ -117,7 +117,8 @@ The Tidyverts framework defines a number of other functions to help with explora
 ```{r}
 aus_retail %>%
     filter(Industry == "Food retailing", State == "New South Wales") %>%
-    gg_season(Turnover, facet_period="10 years") + theme(axis.text.x=element_blank()) +
+    gg_season(Turnover, facet_period="10 years") +
+        theme(axis.text.x=element_blank(), legend.position="bottom") +
         scale_y_log10() +
         annotation_logticks() +
         ggtitle("Food retailing/New South Wales")
@@ -129,6 +130,7 @@ The `gg_season` function produces a plot where the x-axis shows data from within
 aus_retail %>%
     filter(Industry == "Food retailing", State == "New South Wales") %>%
     gg_subseries(Turnover) +
+        theme(axis.text.x=element_blank()) +
         scale_y_log10() +
         annotation_logticks() +
         ggtitle("Food retailing/New South Wales")
