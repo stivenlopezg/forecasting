@@ -35,3 +35,7 @@ install.packages("rmarkdown")
 install.packages(c("future", "future.apply"))
 install.packages(c("tsibble", "fable", "feasts", "urca"))
 ```
+
+## Acknowledgements
+
+Mitchell O'Hara-Wild (@mitchelloharawild) provided many comments that helped improve this example.
