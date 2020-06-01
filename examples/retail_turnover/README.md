@@ -40,3 +40,7 @@ devtools::install_github("tidyverts/fabletools@864b2daa983446017f2ed757a3b8889b9
 devtools::install_github("tidyverts/fable@d2600c151fde1609cc491d8f94bd136c71f87523")
 devtools::install_github("tidyverts/feasts@f006746effa10bc223479441ebede136ca016b11")
 ```
+
+## Acknowledgements
+
+Mitchell O'Hara-Wild (@mitchelloharawild) provided many comments that helped improve this example.
