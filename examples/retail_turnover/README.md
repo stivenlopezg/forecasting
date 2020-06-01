@@ -9,7 +9,7 @@ The main reference for Tidyverts is the textbook [_Forecasting: Principles and P
 The R Notebooks in this directory are as follows. Each notebook also has a corresponding HTML file, which is the rendered output from running the code. This is best viewed on our [https://microsoft.github.io/forecasting/](https://microsoft.github.io/forecasting/) GitHub Page.
 
 - [`01_explore.Rmd`](01_explore.Rmd) [`(.html)`](01_explore.nb.html) introduces the `aus_retail` dataset and performs some exploratory analysis, generating graphs and tables.
-- [`02_model.Rmd`](02_model.Rmd) [`(.html)`](02_model.nb.html) fits a range of simple time series models to the data and discusses the results.
+- [`02_model.Rmd`](02_model.Rmd) [`(.html)`](02_model.nb.html) fits a range of simple time series models to the data and discusses the results, including various issues relevant to forecasting in general.
 
 ## Package installation
 
